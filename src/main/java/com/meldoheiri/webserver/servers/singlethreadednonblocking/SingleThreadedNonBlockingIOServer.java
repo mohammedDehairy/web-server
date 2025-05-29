@@ -13,7 +13,7 @@ import java.util.Iterator;
 import com.meldoheiri.webserver.serverconfig.ServerConfig;
 import com.meldoheiri.webserver.servers.WebServer;
 import com.meldoheiri.webserver.servers.exceptions.WebServerException;
-import com.meldoheiri.webserver.servers.httprequesthandler.HTTPSocketDataHandler;
+import com.meldoheiri.webserver.servers.httpsocketdatahandler.HTTPSocketDataHandler;
 
 public class SingleThreadedNonBlockingIOServer implements WebServer {
     private final ServerConfig config;

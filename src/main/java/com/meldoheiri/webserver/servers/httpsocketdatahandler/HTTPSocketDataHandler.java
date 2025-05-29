@@ -1,4 +1,4 @@
-package com.meldoheiri.webserver.servers.httprequesthandler;
+package com.meldoheiri.webserver.servers.httpsocketdatahandler;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -12,6 +12,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.meldoheiri.webserver.servers.exceptions.WebServerException;
+import com.meldoheiri.webserver.servers.httprequesthandler.DefaultHTTPRequestHandler;
+import com.meldoheiri.webserver.servers.httprequesthandler.HTTPRequest;
+import com.meldoheiri.webserver.servers.httprequesthandler.HTTPRequestHandler;
+import com.meldoheiri.webserver.servers.httprequesthandler.HTTPResponse;
 import com.meldoheiri.webserver.validators.PathValidator;
 
 public class HTTPSocketDataHandler implements SocketDataHandler {
@@ -26,6 +30,10 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
     private int bodyStartIndex = -1;
     private String[] firstLine;
 
+    private static final String ROOT_PATH = "/usr/local/MyWebServer";
+
+    private final Map<String, HTTPRequestHandler> routingTable = Map.of("MyWebApp", new DefaultHTTPRequestHandler());
+
     public HTTPSocketDataHandler(OutputStream responseOutputStream) {
         this.responseWriter = new BufferedWriter(new OutputStreamWriter(responseOutputStream));
     }
@@ -37,7 +45,7 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
             requestLines.append(new String(data, StandardCharsets.UTF_8.name()));
             parseHeadersIfComplete();
             if (isReadyToWriteResponse()) {
-                writeResponse(buildBody());
+                writeResponse();
                 return true;
             }
             return false;
@@ -89,37 +97,42 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
         return bodyBytes >= bodyLength;
     }
 
-    private void writeResponse(String body) throws IOException, WebServerException {
-        String reponse = buildResponse(body);
-        responseWriter.write(reponse);
-        responseWriter.flush();
-    }
-
-    private void writeBadRequest() throws IOException, WebServerException {
-        String reponse = buildBadResponse();
-        responseWriter.write(reponse);
-        responseWriter.flush();
-    }
-
-    private String buildResponse(String body) throws WebServerException {
-        if (!pathValidator.validate(firstLine[1])) {
+    private void writeResponse() throws IOException, WebServerException {
+        String fullPath = firstLine[1];
+        if (!pathValidator.validate(fullPath)) {
             throw new WebServerException("Invalid path: " + firstLine);
         }
-
-        return "HTTP/1.1 200 OK\r\n" +
-                "Content-Type: text/plain\r\n" +
-                "Content-Length: " + body.length() + "\r\n\r\n" +
-                body;
+        String[] components = fullPath.split("/");
+        String root;
+        if (components.length < 2) {
+            root = "";
+        } else {
+            root = components[1];
+        }
+        HTTPRequestHandler responseHandler = routingTable.get(root);
+        HTTPResponse response;
+        if (responseHandler == null) {
+            response = new HTTPResponse("HTTP/1.1 404 Not Found\r\n", Map.of(), "");
+        } else {
+            response = responseHandler.handle(new HTTPRequest(ROOT_PATH + fullPath, headersMap, buildBody()));
+        }
+        String reponse = buildResponse(response);
+        responseWriter.write(reponse);
+        responseWriter.flush();
     }
 
-    private String buildBadResponse() throws WebServerException {
-        String body = "400 Bad Request";
-        return "HTTP/1.1 400 Bad Request\r\n" +
-        "Content-Type: text/plain\r\n" +
-        "Content-Length: " + body.length() + "\r\n" +
-        "Connection: close\r\n" +
-        "\r\n" +
-        body;
+    private String buildResponse(HTTPResponse response) throws WebServerException {
+        StringBuilder responseBuilder = new StringBuilder();
+        responseBuilder.append(response.firstLine());
+        responseBuilder.append("Content-Type: text/plain\r\n");
+
+        for (Map.Entry<String, String> header : response.headers().entrySet()) {
+            responseBuilder.append(header.getKey() + ": " + header.getValue());
+        }
+        responseBuilder.append("Content-Length: " + response.body().length() + "\r\n\r\n");
+        responseBuilder.append(response.body());
+
+        return  responseBuilder.toString();
     }
 
     private String[] parseFirstLine(String firstLine) throws WebServerException {
@@ -135,6 +148,7 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
         if (!"HTTP/1.1".equalsIgnoreCase(components[2])) {
             throw new WebServerException("Only HTTP/1.1 is supported");
         }
+
         return components;
     }
 }

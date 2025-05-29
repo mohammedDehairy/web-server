@@ -5,7 +5,6 @@ import com.meldoheiri.webserver.serverconfig.ServerConfig;
 import com.meldoheiri.webserver.servers.WebServer;
 import com.meldoheiri.webserver.servers.blockingmultithreaded.MultiThreadedBlockingIOServer;
 import com.meldoheiri.webserver.servers.exceptions.WebServerException;
-import com.meldoheiri.webserver.servers.singlethreadednonblocking.SingleThreadedNonBlockingIOServer;
 
 public class App {
 

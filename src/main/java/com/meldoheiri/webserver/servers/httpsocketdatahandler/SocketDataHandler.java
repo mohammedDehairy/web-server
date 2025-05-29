@@ -1,4 +1,4 @@
-package com.meldoheiri.webserver.servers.httprequesthandler;
+package com.meldoheiri.webserver.servers.httpsocketdatahandler;
 
 import com.meldoheiri.webserver.servers.exceptions.WebServerException;
 
