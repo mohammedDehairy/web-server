@@ -1,48 +1,78 @@
-# Web Server Project
+# Java Web Server
 
-This project is a simple web server built using Java. It demonstrates how to set up a basic web server and configure it using properties.
+A simple Java web server supporting both single-threaded non-blocking I/O and multi-threaded blocking I/O modes.
 
-## Project Structure
+## Features
 
-```
-web-server
-├── src
-│   ├── main
-│   │   ├── java
-│   │   │   └── com
-│   │   │       └── example
-│   │   │           └── App.java
-│   │   └── resources
-│   │       └── application.properties
-├── pom.xml
-└── README.md
-```
+- **SingleThreadedNonBlockingIOServer**: Uses Java NIO for efficient single-threaded event-driven networking.
+- **MultiThreadedBlockingIOServer**: Uses classic blocking I/O with a thread pool for concurrency.
+- HTTP/1.1 support with basic keep-alive handling.
+- Connection management and cleanup.
+- Configurable via `ServerConfig`.
 
 ## Requirements
 
-- Java 11 or higher
+- Java 17 or later
 - Maven
 
-## Building the Project
+## Getting Started
 
-To build the project, navigate to the project directory and run:
+### 1. Clone the Repository
 
-```
-mvn clean install
-```
-
-## Running the Web Server
-
-After building the project, you can run the web server using the following command:
-
-```
-mvn exec:java -Dexec.mainClass="com.example.App"
+```bash
+git clone https://github.com/yourusername/java-web-server.git
+cd java-web-server
 ```
 
-## Configuration
+### 2. Build
 
-The server configuration can be modified in the `src/main/resources/application.properties` file. You can set properties such as the server port and context path.
+If using Maven:
+
+```bash
+mvn clean package
+```
+
+### 3. Configuration
+
+Edit `application.properties`:
+
+```java
+server.port=1024
+server.host=127.0.0.1
+server.noThreads=15
+server.sockerscheduler=[SingleThreadedNonBlockingIOServer|MultiThreadedBlockingIOServer]
+```
+
+### 4. Running the Server
+
+#### SingleThreadedNonBlockingIOServer
+
+```java
+ServerConfig config = new ServerConfig();
+WebServer server = new SingleThreadedNonBlockingIOServer(config);
+server.start();
+```
+
+#### MultiThreadedBlockingIOServer
+
+```java
+ServerConfig config = new ServerConfig();
+WebServer server = new MultiThreadedBlockingIOServer(config);
+server.start();
+```
+
+## Usage
+
+- Send HTTP requests using Postman, curl, or JMeter.
+- The server will handle multiple concurrent connections.
+- For best results with the non-blocking server, ensure clients either reuse connections or the server closes connections after each response.
+
+## Notes
+
+- **SingleThreadedNonBlockingIOServer**: Designed for efficiency, but ensure clients either reuse connections or the server closes connections after each response.
+- **MultiThreadedBlockingIOServer**: Each connection is handled by a thread from the pool. Suitable for workloads with moderate concurrency.
+- Load tested using jMeter and postman, and the server can handle up to 100-200 concurrent users with as errors less than 1% of requests. **MultiThreadedBlockingIOServer** works best because connections are managed more gracefully using java blocking socket IO and thread per connection using thread pooling.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License
