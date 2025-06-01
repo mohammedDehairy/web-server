@@ -8,6 +8,7 @@ public class ServerConfig {
     private String host;
     private int port;
     private int noThreads;
+    private SocketScheduler socketScheduler;
 
     public ServerConfig() throws IOException {
         Properties properties = new Properties();
@@ -19,6 +20,14 @@ public class ServerConfig {
             host = properties.getProperty("server.host");
             port = Integer.parseInt(properties.getProperty("server.port"));
             noThreads = Integer.parseInt(properties.getProperty("server.noThreads"));
+            String schedulerString = properties.getProperty("server.sockerscheduler");
+            if (schedulerString == null) {
+                schedulerString = "SingleThreadedNonBlockingIOServer";
+            }
+            this.socketScheduler = SocketScheduler.valueOf(schedulerString);
+            if (socketScheduler == null) {
+                this.socketScheduler = SocketScheduler.SingleThreadedNonBlockingIOServer;
+            }
         }
     }
 
@@ -32,5 +41,14 @@ public class ServerConfig {
 
     public int getNoThreads() {
         return noThreads;
+    }
+
+    public SocketScheduler getSocketScheduler() {
+        return socketScheduler;
+    }
+
+    public enum SocketScheduler {
+        MultiThreadedBlockingIOServer,
+        SingleThreadedNonBlockingIOServer;
     }
 }

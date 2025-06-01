@@ -7,6 +7,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.meldoheiri.webserver.serverconfig.ServerConfig;
 import com.meldoheiri.webserver.servers.WebServer;
@@ -15,6 +16,7 @@ import com.meldoheiri.webserver.servers.httpsocketdatahandler.HTTPSocketDataHand
 
 public class MultiThreadedBlockingIOServer implements WebServer {
     private final ServerConfig config;
+    private AtomicInteger connectionCount = new AtomicInteger(0);
 
     public MultiThreadedBlockingIOServer(ServerConfig config) {
         this.config = config;
@@ -40,23 +42,36 @@ public class MultiThreadedBlockingIOServer implements WebServer {
 
     private void handleClient(Socket socket) {
         try {
-            HTTPSocketDataHandler requestHandler = new HTTPSocketDataHandler(socket.getOutputStream());
+            System.out.println("Accept Socket connection: " + connectionCount.incrementAndGet());
+            HTTPSocketDataHandler requestHandler = new HTTPSocketDataHandler(socket.getOutputStream(), false);
             byte[] buffer = new byte[1024];
             InputStream in = socket.getInputStream();
             int readBytes;
             while ((readBytes = in.read(buffer, 0, buffer.length)) != -1) {
                 requestHandler.read(buffer);
+                if (requestHandler.shouldCloseConnection()) {
+                    closeConnection(socket);
+                    return;
+                }
             }
         } catch (IOException | WebServerException e) {
             System.err.println("Failed to handle client connection");
             e.printStackTrace();
         } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                System.err.println("Failed to close client socket");
-                e.printStackTrace();
+            closeConnection(socket);
+        }
+    }
+
+    private void closeConnection(Socket socket) {
+        try {
+            socket.close();
+            System.out.println("Socket closed");
+            if (connectionCount.get() >= 0) {
+                connectionCount.decrementAndGet();
             }
+        } catch (IOException e) {
+            System.err.println("Failed to close client socket");
+            e.printStackTrace();
         }
     }
 }

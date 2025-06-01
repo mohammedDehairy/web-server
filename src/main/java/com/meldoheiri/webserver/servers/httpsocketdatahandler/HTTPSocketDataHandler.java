@@ -29,13 +29,15 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
     private int bodyLength = 0;
     private int bodyStartIndex = -1;
     private String[] firstLine;
+    private boolean closeConnections;
 
     private static final String ROOT_PATH = "/usr/local/MyWebServer";
 
     private final Map<String, HTTPRequestHandler> routingTable = Map.of("MyWebApp", new DefaultHTTPRequestHandler());
 
-    public HTTPSocketDataHandler(OutputStream responseOutputStream) {
+    public HTTPSocketDataHandler(OutputStream responseOutputStream, boolean closeConnections) {
         this.responseWriter = new BufferedWriter(new OutputStreamWriter(responseOutputStream));
+        this.closeConnections = closeConnections;
     }
 
     @Override
@@ -125,11 +127,16 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
         StringBuilder responseBuilder = new StringBuilder();
         responseBuilder.append(response.firstLine());
         responseBuilder.append("Content-Type: text/plain\r\n");
+        if (shouldCloseConnection() || closeConnections) {
+            responseBuilder.append("Connection: close\r\n");
+        } else {
+            responseBuilder.append("Connection: keep-alive\r\n");
+        }
 
         for (Map.Entry<String, String> header : response.headers().entrySet()) {
-            responseBuilder.append(header.getKey() + ": " + header.getValue());
+            responseBuilder.append(header.getKey() + ": " + header.getValue() + "\r\n");
         }
-        responseBuilder.append("Content-Length: " + response.body().length() + "\r\n\r\n");
+        responseBuilder.append("Content-Length: " + response.body().getBytes(StandardCharsets.UTF_8).length + "\r\n\r\n");
         responseBuilder.append(response.body());
 
         return  responseBuilder.toString();
@@ -150,5 +157,10 @@ public class HTTPSocketDataHandler implements SocketDataHandler {
         }
 
         return components;
+    }
+
+    @Override
+    public boolean shouldCloseConnection() {
+        return headersMap.containsKey("Connection") && headersMap.get("Connection").equals("close");
     }
 }
